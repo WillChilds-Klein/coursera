@@ -20,12 +20,31 @@ grad = zeros(size(theta));
 % Note: grad should have the same dimensions as theta
 %
 
+% === Calculate J === %
+outer_sum = 0;
+for i = 1:m
+    x_i = X(i,:)';                          % transpose to make col vector
+    y_i = y(i);
+    h_of_x = sigmoid(theta' * x_i);
+    left_term = (-1*y_i) * log(h_of_x);
+    right_term = (1 - y_i) * log(1 - h_of_x);
+    outer_sum += left_term - right_term;
+end
+J = (1/m) * outer_sum;
+% =================== %
 
-
-
-
-
-
+% === Calculate grad === %
+for j = 1:length(grad)
+    grad_sum = 0;
+    for i = 1:m
+        x_i = X(i,:)';
+        y_i = y(i);
+        h_of_x = sigmoid(theta' * x_i);
+        grad_sum += (h_of_x - y_i) * x_i(j);
+    end
+    grad(j) = (1/m) * grad_sum;
+end
+% ====================== %
 
 % =============================================================
 
