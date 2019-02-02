@@ -13,6 +13,9 @@ MSGS = [
 '466d06ece998b7a2fb1d464fed2ced7641ddaa3cc31c9941cf110abbf409ed39598005b3399ccfafb61d0315fca0a314be138a9f32503bedac8067f03adbf3575c3b8edc9ba7f537530541ab0f9f3cd04ff50d66f1d559ba520e89a2cb2a83',
 ]
 
+TGT = '32510ba9babebbbefd001547a810e67149caee11d945cd7fc81a05e9f85aac650e9052ba6a8cd8257bf14d13e6f0a803b54fde9e77472dbff89d71b57bddef121336cb85ccb8f3315f4b52e301d16e9f52f904'
+
+
 
 def strxor(a, b):     # xor two strings of different lengths
     if len(a) > len(b):
@@ -20,52 +23,49 @@ def strxor(a, b):     # xor two strings of different lengths
     else:
        return "".join([chr(ord(x) ^ ord(y)) for (x, y) in zip(a, b[:len(a)])])
 
-def random(size=16):
-    return open("/dev/urandom").read(size)
+def isletter(c):
+    x = ord(c)
+    return (x >= 65 and x <= 90) or (x >= 97 and x <= 122)
 
-def encrypt(key, msg):
-    c = strxor(key, msg)
-    # print
-    # print c.encode('hex')
-    return c
+def getord(s):
+    return [x if isletter(x) else '_' for x in s]
 
-def decrypt(key, ciphertext):
-    c = strxor(key, ciphertext)
-    # print
-    # print c.encode('hex')
-    return c
-
-
+def mostcommon(lst):
+    d = {l: 0 for l in lst}
+    for l in lst:
+        d[l] += 1 if isletter(l) else 0
+    tpl_cmp = lambda tpl: tpl[1]
+    srtd = sorted(d.items(), reverse=True, key=tpl_cmp)
+    # print srtd
+    candidate = srtd[0]
+    nxt = srtd[1]
+    if nxt[1] > 1 and not nxt[1] == candidate[1]:
+        return ' '
+    return candidate[0]
 
 def main():
-    tgt = '32510ba9babebbbefd001547a810e67149caee11d945cd7fc81a05e9f85aac650e9052ba6a8cd8257bf14d13e6f0a803b54fde9e77472dbff89d71b57bddef121336cb85ccb8f3315f4b52e301d16e9f52f904'
-    acc = MSGS[0]
-    for ct in MSGS[1:]:
-        acc = strxor(acc, ct)
+    tgt_xors = []
+    for ct in MSGS:
+        p = getord(strxor(TGT.decode('hex'), ct.decode('hex')))
+        print ''.join(p)
+        tgt_xors.append(p)
 
-    # print acc
-    # print len(acc)
+    msg = ''
+    for i in range(len(TGT.decode('hex'))):
+        head = [tgt_xor[i] for tgt_xor in tgt_xors]
+        c = mostcommon(head)
+        msg += chr(ord(c) ^ ord(' ')) if isletter(c) else c
 
-    # print '---'
+    print '\n' + msg
 
-    # print strxor(acc, tgt)
-    # print len(strxor(acc, tgt))
+    print '\n'
 
-    # print '---'
+    pt = 'The secret message is: When using a stream cipher, never use the key more than once'
+    key = strxor(pt, TGT.decode('hex'))
 
-    # print decrypt(acc, tgt)
-    # print len(decrypt(acc, tgt))
+    for msg in MSGS:
+        print strxor(key, msg.decode('hex'))
 
-    # print '---'
-
-    # print strxor(MSGS[0], MSGS[1])
-    # print strxor(MSGS[2], MSGS[1])
-    # print strxor(tgt, strxor(MSGS[0], MSGS[1])).decode('hex')
-    print strxor(MSGS[0], MSGS[1]).encode('hex')
-    # for m in MSGS:
-        # print len(m)
-    # print
-    # print len(tgt)
 
 if __name__ == '__main__':
     main()
