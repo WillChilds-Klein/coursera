@@ -27,30 +27,40 @@ def strip_iv(text):
     return (text[:iv_length], text[iv_length:])
 
 def pad(inpt):
-    # TODO
-    return inpt
+    size = BLOCK_SIZE_BYTES - (len(inpt)/2) % BLOCK_SIZE_BYTES
+    return inpt + ''.join([chr(size).encode('hex') for _ in range(size)])
 
 def unpad(inpt):
-    # TODO
-    return inpt
+    last = inpt[-2:]
+    return inpt[:-1*2*int(last, base=16)]       # 2 hex digits per byte
 
 def cbc_encrypt(inpt):
-    # TODO
-    iv, pt = strip_iv(inpt)
-    return iv + ct
+    iv, pts = strip_iv(inpt)
+    block_chars = BLOCK_SIZE_BYTES * 2
+    pts = pad(pts)
+    pts = [pts[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
+    cipher = AES.new(KEY_CBC.decode('hex'), AES.MODE_ECB)
+    cts = []
+    prev = iv
+    for p in pts:
+        c = strxor(p, prev)
+        c = cipher.encrypt(c.decode('hex')).encode('hex')
+        cts.append(c)
+        prev = c
+    return iv + ''.join(cts)
 
 def cbc_decrypt(inpt):
-    iv, ct = strip_iv(inpt)
+    iv, cts = strip_iv(inpt)
     block_chars = BLOCK_SIZE_BYTES * 2
-    ct = [ct[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
+    cts = [cts[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
     cipher = AES.new(KEY_CBC.decode('hex'), AES.MODE_ECB)
-    pt = []
+    pts = []
     prev = iv
-    for c in ct:
+    for c in cts:
         p = cipher.decrypt(c.decode('hex')).encode('hex')
-        pt.append(strxor(p, prev))
+        pts.append(strxor(p, prev))
         prev = c
-    return iv + unpad(''.join(pt))
+    return iv + unpad(''.join(pts))
 
 def ctr_increment(ctr):
     # TODO: right now, this only increments the final byte...
@@ -59,30 +69,30 @@ def ctr_increment(ctr):
     return prfx + chr(ord(ctr[len(ctr)-2:].decode('hex'))+1).encode('hex')
 
 def ctr_encrypt(inpt):
-    iv, pt = strip_iv(inpt)
+    iv, pts = strip_iv(inpt)
     block_chars = BLOCK_SIZE_BYTES * 2
-    pt = [pt[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
+    pts = [pts[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
     cipher = AES.new(KEY_CTR.decode('hex'), AES.MODE_ECB)
-    ct = []
+    cts = []
     ctr = iv
-    for p in pt:
+    for p in pts:
         enc = cipher.encrypt(ctr.decode('hex')).encode('hex')
-        ct.append(strxor(enc, p))
+        cts.append(strxor(enc, p))
         ctr = ctr_increment(ctr)
-    return iv + ''.join(ct)
+    return iv + ''.join(cts)
 
 def ctr_decrypt(inpt):
-    iv, ct = strip_iv(inpt)
+    iv, cts = strip_iv(inpt)
     block_chars = BLOCK_SIZE_BYTES * 2
-    ct = [ct[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
+    cts = [cts[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
     cipher = AES.new(KEY_CTR.decode('hex'), AES.MODE_ECB)
-    pt = []
+    pts = []
     ctr = iv
-    for c in ct:
+    for c in cts:
         enc = cipher.encrypt(ctr.decode('hex')).encode('hex')
-        pt.append(strxor(enc, c))
+        pts.append(strxor(enc, c))
         ctr = ctr_increment(ctr)
-    return iv + ''.join(pt)
+    return iv + ''.join(pts)
 
 def main():
     print 'CBC_0: ' + strip_iv(cbc_decrypt(CT_CBC_0))[1].decode('hex')
@@ -90,8 +100,8 @@ def main():
     print 'CTR_0: ' + strip_iv(ctr_decrypt(CT_CTR_0))[1].decode('hex')
     print 'CTR_1: ' + strip_iv(ctr_decrypt(CT_CTR_1))[1].decode('hex')
 
-    # assert CT_CBC_0 == cbc_encrypt(cbc_decrypt(CT_CBC_0))
-    # assert CT_CBC_1 == cbc_encrypt(cbc_decrypt(CT_CBC_1))
+    assert CT_CBC_0 == cbc_encrypt(cbc_decrypt(CT_CBC_0))
+    assert CT_CBC_1 == cbc_encrypt(cbc_decrypt(CT_CBC_1))
     assert CT_CTR_0 == ctr_encrypt(ctr_decrypt(CT_CTR_0))
     assert CT_CTR_1 == ctr_encrypt(ctr_decrypt(CT_CTR_1))
 
