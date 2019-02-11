@@ -27,14 +27,15 @@ def strip_iv(text):
     return (text[:iv_length], text[iv_length:])
 
 def pad(inpt):
+    # TODO
     return inpt
 
 def unpad(inpt):
+    # TODO
     return inpt
 
 def cbc_encrypt(inpt):
     iv, pt = strip_iv(inpt)
-    ct = pad(pt)
     return iv + ct
 
 def cbc_decrypt(inpt):
@@ -52,13 +53,21 @@ def cbc_decrypt(inpt):
 
 def ctr_encrypt(inpt):
     iv, pt = strip_iv(inpt)
-    ct = pad(pt)
+    ct = pt
     return iv + ct
 
 def ctr_decrypt(inpt):
     iv, ct = strip_iv(inpt)
-    pt = ct
-    return iv + unpad(pt)
+    block_chars = BLOCK_SIZE_BYTES * 2
+    ct = [ct[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
+    cipher = AES.new(KEY_CTR.decode('hex'), AES.MODE_ECB)
+    pt = []
+    ctr = iv
+    for c in ct:
+        enc = cipher.encrypt(ctr.decode('hex')).encode('hex')
+        pt.append(strxor(enc, c))
+        ctr = ctr[:len(ctr)-2] + chr(ord(ctr[len(ctr)-2:].decode('hex'))+1).encode('hex')
+    return iv + ''.join(pt)
 
 def main():
     print 'CBC_0: ' + strip_iv(cbc_decrypt(CT_CBC_0))[1].decode('hex')
