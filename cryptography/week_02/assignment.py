@@ -35,6 +35,7 @@ def unpad(inpt):
     return inpt
 
 def cbc_encrypt(inpt):
+    # TODO
     iv, pt = strip_iv(inpt)
     return iv + ct
 
@@ -51,10 +52,24 @@ def cbc_decrypt(inpt):
         prev = c
     return iv + unpad(''.join(pt))
 
+def ctr_increment(ctr):
+    # TODO: right now, this only increments the final byte...
+    #       i.e. it's only secure for 256 messages for a given key :(
+    prfx = ctr[:len(ctr)-2]
+    return prfx + chr(ord(ctr[len(ctr)-2:].decode('hex'))+1).encode('hex')
+
 def ctr_encrypt(inpt):
     iv, pt = strip_iv(inpt)
-    ct = pt
-    return iv + ct
+    block_chars = BLOCK_SIZE_BYTES * 2
+    pt = [pt[i:i+block_chars] for i in range(0, len(inpt), block_chars)]
+    cipher = AES.new(KEY_CTR.decode('hex'), AES.MODE_ECB)
+    ct = []
+    ctr = iv
+    for p in pt:
+        enc = cipher.encrypt(ctr.decode('hex')).encode('hex')
+        ct.append(strxor(enc, p))
+        ctr = ctr_increment(ctr)
+    return iv + ''.join(ct)
 
 def ctr_decrypt(inpt):
     iv, ct = strip_iv(inpt)
@@ -66,7 +81,7 @@ def ctr_decrypt(inpt):
     for c in ct:
         enc = cipher.encrypt(ctr.decode('hex')).encode('hex')
         pt.append(strxor(enc, c))
-        ctr = ctr[:len(ctr)-2] + chr(ord(ctr[len(ctr)-2:].decode('hex'))+1).encode('hex')
+        ctr = ctr_increment(ctr)
     return iv + ''.join(pt)
 
 def main():
@@ -77,8 +92,8 @@ def main():
 
     # assert CT_CBC_0 == cbc_encrypt(cbc_decrypt(CT_CBC_0))
     # assert CT_CBC_1 == cbc_encrypt(cbc_decrypt(CT_CBC_1))
-    # assert CT_CTR_0 == ctr_encrypt(ctr_decrypt(CT_CTR_0))
-    # assert CT_CTR_1 == ctr_encrypt(ctr_decrypt(CT_CTR_1))
+    assert CT_CTR_0 == ctr_encrypt(ctr_decrypt(CT_CTR_0))
+    assert CT_CTR_1 == ctr_encrypt(ctr_decrypt(CT_CTR_1))
 
 
 if __name__ == '__main__':
